@@ -1,0 +1,151 @@
+{
+  "date_generated": "2025-06-16T15:52:13.069236",
+  "xcode_version": "Developer",
+  "total_menu": {
+    "iPhone 16e": {
+      "sku": "iPhone17,5",
+      "chip": "A18",
+      "ram": "8 GB"
+    },
+    "iPhone 16 Plus": {
+      "sku": "iPhone17,4",
+      "chip": "A18",
+      "ram": "8 GB"
+    },
+    "iPhone 16": {
+      "sku": "iPhone17,3",
+      "chip": "A18",
+      "ram": "8 GB"
+    },
+    "iPhone 16 Pro Max": {
+      "sku": "iPhone17,2",
+      "chip": "A18 Pro",
+      "ram": "8 GB"
+    },
+    "iPhone 16 Pro": {
+      "sku": "iPhone17,1",
+      "chip": "A18 Pro",
+      "ram": "8 GB"
+    },
+    "iPhone 15 Pro Max": {
+      "sku": "iPhone16,2",
+      "chip": "A17 Pro",
+      "ram": "8 GB"
+    },
+    "iPhone 15 Pro": {
+      "sku": "iPhone16,1",
+      "chip": "A17 Pro",
+      "ram": "8 GB"
+    },
+    "iPhone 15 Plus": {
+      "sku": "iPhone15,5",
+      "chip": "A16",
+      "ram": "6 GB"
+    },
+    "iPhone 15": {
+      "sku": "iPhone15,4",
+      "chip": "A16",
+      "ram": "6 GB"
+    },
+    "iPhone 14 Pro Max": {
+      "sku": "iPhone15,3",
+      "chip": "A16",
+      "ram": "6 GB"
+    },
+    "iPhone 14 Pro": {
+      "sku": "iPhone15,2",
+      "chip": "A16",
+      "ram": "6 GB"
+    },
+    "iPhone 14 Plus": {
+      "sku": "iPhone14,8",
+      "chip": "A15",
+      "ram": "6 GB"
+    },
+    "iPhone 14": {
+      "sku": "iPhone14,7",
+      "chip": "A15",
+      "ram": "6 GB"
+    },
+    "iPhone SE (3rd generation)": {
+      "sku": "iPhone14,6",
+      "chip": "A15",
+      "ram": "4 GB"
+    },
+    "iPhone 13": {
+      "sku": "iPhone14,5",
+      "chip": "A15",
+      "ram": "4 GB"
+    },
+    "iPhone 13 mini": {
+      "sku": "iPhone14,4",
+      "chip": "A15",
+      "ram": "4 GB"
+    },
+    "iPhone 13 Pro Max": {
+      "sku": "iPhone14,3",
+      "chip": "A15",
+      "ram": "6 GB"
+    },
+    "iPhone 13 Pro": {
+      "sku": "iPhone14,2",
+      "chip": "A15",
+      "ram": "6 GB"
+    },
+    "iPhone 12 Pro Max": {
+      "sku": "iPhone13,4",
+      "chip": "A14",
+      "ram": "6 GB"
+    },
+    "iPhone 12 Pro": {
+      "sku": "iPhone13,3",
+      "chip": "A14",
+      "ram": "6 GB"
+    },
+    "iPhone 12": {
+      "sku": "iPhone13,2",
+      "chip": "A14",
+      "ram": "4 GB"
+    },
+    "iPhone 12 mini": {
+      "sku": "iPhone13,1",
+      "chip": "A14",
+      "ram": "4 GB"
+    },
+    "iPhone SE (2nd generation)": {
+      "sku": "iPhone12,8",
+      "chip": "A13",
+      "ram": "3 GB"
+    },
+    "iPhone 11 Pro Max": {
+      "sku": "iPhone12,5",
+      "chip": "A13",
+      "ram": "4 GB"
+    },
+    "iPhone 11 Pro": {
+      "sku": "iPhone12,3",
+      "chip": "A13",
+      "ram": "4 GB"
+    },
+    "iPhone 11": {
+      "sku": "iPhone12,1",
+      "chip": "A13",
+      "ram": "4 GB"
+    },
+    "iPhone XR": {
+      "sku": "iPhone11,8",
+      "chip": "A12",
+      "ram": "3 GB"
+    },
+    "iPhone XS Max": {
+      "sku": "iPhone11,4",
+      "chip": "A12",
+      "ram": "4 GB"
+    },
+    "iPhone XS": {
+      "sku": "iPhone11,2",
+      "chip": "A12",
+      "ram": "4 GB"
+    }
+  }
+}

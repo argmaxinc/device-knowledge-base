@@ -187,6 +187,21 @@ def get_ipad_family(name: str) -> str:
         return "mini"
     return "ipad"
 
+def is_chip_at_least_a12(chip: str) -> bool:
+    """Return True if chip is A12 or newer, or any M-series chip."""
+    if not chip or chip == "Unknown":
+        return False
+    chip = chip.strip().upper()
+    if chip.startswith("M"):
+        return True
+    match = re.match(r"A(\d+)", chip)
+    if match:
+        try:
+            return int(match.group(1)) >= 12
+        except Exception:
+            return False
+    return False
+
 def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str, str] = None, chip_map: Dict[str, str] = None, xcode_version: str = "Xcode") -> Dict[str, Any]:
     conn = get_db_connection(db_path)
     if not conn:
@@ -265,6 +280,9 @@ def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str,
                 chip = chip.replace('Bionic', '').strip()
             if model_name == "iPad Pro (12.9-inch) (5th generation)":
                 sku = "iPad13,8"
+            # Only include A12 or newer, or M-series chips
+            if not is_chip_at_least_a12(chip):
+                continue
             menu[model_name] = { 
                 "sku": sku, 
                 "chip": chip, 

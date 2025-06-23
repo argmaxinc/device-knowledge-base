@@ -1,0 +1,206 @@
+{
+  "date_generated": "2025-06-23T11:06:42.001428",
+  "xcode_version": "Developer",
+  "total_menu": {
+    "iPad Pro (11-inch) (2nd generation)": {
+      "sku": "iPad8,10",
+      "chip": "A12Z",
+      "ram": "6 GB"
+    },
+    "iPad Pro (12.9-inch) (3rd generation)": {
+      "sku": "iPad8,5",
+      "chip": "A12X",
+      "ram": "4 GB"
+    },
+    "iPad Pro (11-inch)": {
+      "sku": "iPad8,1",
+      "chip": "A12X",
+      "ram": "4 GB"
+    },
+    "iPad Pro (12.9-inch) (4th generation)": {
+      "sku": "iPad8,11",
+      "chip": "A12Z",
+      "ram": "6 GB"
+    },
+    "iPad (6th generation)": {
+      "sku": "iPad7,5",
+      "chip": "A10",
+      "ram": "2 GB"
+    },
+    "iPad Pro (10.5-inch)": {
+      "sku": "iPad7,3",
+      "chip": "A10X",
+      "ram": "8 GB"
+    },
+    "iPad Pro (12.9-inch) (2nd generation)": {
+      "sku": "iPad7,1",
+      "chip": "A10X",
+      "ram": "8 GB"
+    },
+    "iPad (7th generation)": {
+      "sku": "iPad7,11",
+      "chip": "A10",
+      "ram": "3 GB"
+    },
+    "iPad Pro (12.9-inch)": {
+      "sku": "iPad6,7",
+      "chip": "A9X",
+      "ram": "8 GB"
+    },
+    "iPad Pro (9.7-inch)": {
+      "sku": "iPad6,3",
+      "chip": "A9X",
+      "ram": "8 GB"
+    },
+    "iPad (5th generation)": {
+      "sku": "iPad6,11",
+      "chip": "Unknown",
+      "ram": "2 GB"
+    },
+    "iPad Air 2": {
+      "sku": "iPad5,3",
+      "chip": "A8X",
+      "ram": "2 GB"
+    },
+    "iPad mini 4": {
+      "sku": "iPad5,1",
+      "chip": "A8",
+      "ram": "8 GB"
+    },
+    "iPad mini 3": {
+      "sku": "iPad4,7",
+      "chip": "A7",
+      "ram": "8 GB"
+    },
+    "iPad mini 2": {
+      "sku": "iPad4,4",
+      "chip": "A7",
+      "ram": "8 GB"
+    },
+    "iPad Air": {
+      "sku": "iPad4,1",
+      "chip": "A7",
+      "ram": "8 GB"
+    },
+    "iPad (4th generation)": {
+      "sku": "iPad3,4",
+      "chip": "A6X",
+      "ram": "1 GB"
+    },
+    "iPad (3rd generation)": {
+      "sku": "iPad3,1",
+      "chip": "A5X",
+      "ram": "1 GB"
+    },
+    "iPad mini": {
+      "sku": "iPad2,5",
+      "chip": "A5",
+      "ram": "8 GB"
+    },
+    "iPad 2": {
+      "sku": "iPad2,1",
+      "chip": "A5",
+      "ram": "512 MB"
+    },
+    "iPad Pro 13-inch (M4)": {
+      "sku": "iPad16,5",
+      "chip": "M4",
+      "ram": "8 GB"
+    },
+    "iPad Pro 11-inch (M4)": {
+      "sku": "iPad16,3",
+      "chip": "M4",
+      "ram": "8 GB"
+    },
+    "iPad mini (A17 Pro)": {
+      "sku": "iPad16,1",
+      "chip": "A17 Pro",
+      "ram": "8 GB"
+    },
+    "iPad (A16)": {
+      "sku": "iPad15,7",
+      "chip": "A16",
+      "ram": "6 GB"
+    },
+    "iPad Air 13-inch (M3)": {
+      "sku": "iPad15,5",
+      "chip": "M3",
+      "ram": "8 GB"
+    },
+    "iPad Air 11-inch (M3)": {
+      "sku": "iPad15,3",
+      "chip": "M3",
+      "ram": "8 GB"
+    },
+    "iPad Air 11-inch (M2)": {
+      "sku": "iPad14,8",
+      "chip": "M2",
+      "ram": "8 GB"
+    },
+    "iPad Pro (12.9-inch) (6th generation)": {
+      "sku": "iPad14,5",
+      "chip": "M2",
+      "ram": "8 GB"
+    },
+    "iPad Pro (11-inch) (4th generation)": {
+      "sku": "iPad14,3",
+      "chip": "M2",
+      "ram": "8 GB"
+    },
+    "iPad mini (6th generation)": {
+      "sku": "iPad14,1",
+      "chip": "A15",
+      "ram": "4 GB"
+    },
+    "iPad Air 13-inch (M2)": {
+      "sku": "iPad14,10",
+      "chip": "M2",
+      "ram": "8 GB"
+    },
+    "iPad Pro (12.9-inch) (5th generation)": {
+      "sku": "iPad13,8",
+      "chip": "M1",
+      "ram": "8 GB"
+    },
+    "iPad Pro (11-inch) (3rd generation)": {
+      "sku": "iPad13,4",
+      "chip": "M1",
+      "ram": "8 GB"
+    },
+    "iPad Air (4th generation)": {
+      "sku": "iPad13,1",
+      "chip": "A14",
+      "ram": "1 GB"
+    },
+    "iPad (10th generation)": {
+      "sku": "iPad13,18",
+      "chip": "A14",
+      "ram": "4 GB"
+    },
+    "iPad Air (5th generation)": {
+      "sku": "iPad13,16",
+      "chip": "M1",
+      "ram": "2 GB"
+    },
+    "iPad (9th generation)": {
+      "sku": "iPad12,1",
+      "chip": "A13",
+      "ram": "3 GB"
+    },
+    "iPad (8th generation)": {
+      "sku": "iPad11,6",
+      "chip": "A12",
+      "ram": "3 GB"
+    },
+    "iPad Air (3rd generation)": {
+      "sku": "iPad11,3",
+      "chip": "A12",
+      "ram": "3 GB"
+    },
+    "iPad mini (5th generation)": {
+      "sku": "iPad11,1",
+      "chip": "A12",
+      "ram": "3 GB"
+    }
+  }
+}

@@ -10,6 +10,7 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from typing import Dict, Any, Optional, List, Tuple
 import string
+import subprocess
 
 # --- Apple Wiki Data ---
 APPLE_WIKI_API_URL = "https://theapplewiki.com/api.php"
@@ -70,6 +71,16 @@ MANUAL_RAM_OVERRIDE = {
     "iPad Air (5th generation)": "8 GB",
     "iPad mini (5th generation)": "3 GB",
     "iPad Pro (12.9-inch) (5th generation)": "8 GB",
+    "iPad Pro (11-inch) (3rd generation)": "8 GB",
+    "iPad Pro (11-inch) (4th generation)": "8 GB",
+    "iPad Pro (12.9-inch) (6th generation)": "8 GB",
+    "iPad Pro 11-inch (M4)": "8 GB",
+    "iPad Pro 13-inch (M4)": "8 GB",
+    "iPad (A16)": "8 GB",
+}
+
+MANUAL_SKU_OVERRIDE = {
+    "iPad Pro (12.9-inch) (5th generation)": "iPad13,8 iPad13,9 iPad13,10 iPad13,11"
 }
 
 def get_chip_from_board_config(target: str) -> str:
@@ -202,6 +213,24 @@ def is_chip_at_least_a12(chip: str) -> bool:
             return False
     return False
 
+def get_xcode_version_from_db_path(db_path: str) -> str:
+    """Extract the Xcode version string from the Xcode app bundle given a device_traits.db path."""
+    # Find the Xcode.app root from the db_path
+    xcode_root = db_path.split("/Contents/")[0] + "/Contents"
+    xcodebuild_path = os.path.join(xcode_root, "Developer/usr/bin/xcodebuild")
+    if os.path.exists(xcodebuild_path):
+        try:
+            output = subprocess.check_output([xcodebuild_path, "-version"], universal_newlines=True)
+            # Usually returns: 'Xcode 16.3\nBuild version 16E140\n'
+            lines = output.strip().split("\n")
+            if len(lines) >= 2:
+                version = lines[0].replace("Xcode ", "Version ")
+                build = lines[1].replace("Build version ", "")
+                return f"{version} ({build})"
+        except Exception as e:
+            return f"Unknown (error: {e})"
+    return "Unknown"
+
 def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str, str] = None, chip_map: Dict[str, str] = None, xcode_version: str = "Xcode") -> Dict[str, Any]:
     conn = get_db_connection(db_path)
     if not conn:
@@ -220,72 +249,81 @@ def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str,
             WHERE d.ProductType LIKE 'iPad%'
             ORDER BY d.ProductType DESC
         """)
+        # Group rows by ProductDescription
+        device_rows = {}
+        for row in cursor.fetchall():
+            model_name = row[0]
+            if model_name not in device_rows:
+                device_rows[model_name] = []
+            device_rows[model_name].append(row)
         menu = {}
         unmatched_chips = []
         unmatched_ram = []
         # Build normalized maps for Wiki data
         norm_chip_map = {normalize_name(k): v for k, v in chip_map.items()} if chip_map else {}
         norm_ram_map = {normalize_name(k): v for k, v in ram_map.items()} if ram_map else {}
-        for row in cursor.fetchall():
-            model_name = row[0]
-            sku = row[1]
-            # Strip suffixes like -A, -B from the SKU
-            sku = re.sub(r'-[A-Z]$', '', sku)
-            ram_db = row[4]
-            norm_model_name = normalize_name(model_name)
-
-            # RAM: Check manual override, then Wiki, then DB
-            ram = MANUAL_RAM_OVERRIDE.get(model_name)
-            if not ram:
-                if norm_ram_map:
-                    ram = norm_ram_map.get(norm_model_name)
+        for model_name, rows in device_rows.items():
+            skus = []
+            chip = None
+            ram = None
+            for row in rows:
+                sku = row[1]
+                sku = re.sub(r'-[A-Z]$', '', sku)
+                if sku not in skus:
+                    skus.append(sku)
+                ram_db = row[4]
+                norm_model_name = normalize_name(model_name)
+                # RAM: Check manual override, then Wiki, then DB
+                if ram is None:
+                    ram = MANUAL_RAM_OVERRIDE.get(model_name)
                     if not ram:
-                        close = difflib.get_close_matches(norm_model_name, norm_ram_map.keys(), n=1, cutoff=0.8) # Higher cutoff for more accuracy
-                        if close:
-                            ram = norm_ram_map[close[0]]
-            if not ram and ram_db:
-                # Fallback to DB if no other source
-                try:
-                    ram_val = int(ram_db)
-                    if ram_val in (4, 6, 8, 12, 16):
-                        ram = f"{ram_val} GB"
-                    elif ram_val == 3:
-                        ram = "3 GB"
-                    # ... other DB logic ...
-                except Exception:
-                    ram = str(ram_db)
-            if not ram:
-                ram = "Unknown"
-                unmatched_ram.append(model_name)
-            # CHIP: Check manual override first
-            chip = MANUAL_CHIP_OVERRIDE.get(model_name)
-            if not chip:
-                # Use Wiki chip map with improved fuzzy matching
-                if norm_chip_map:
-                    # Filter Wiki names by device family for more accurate matching
-                    family = get_ipad_family(norm_model_name)
-                    family_keys = [k for k in norm_chip_map.keys() if get_ipad_family(k) == family]
-                    
-                    chip = norm_chip_map.get(norm_model_name)
+                        if norm_ram_map:
+                            ram = norm_ram_map.get(norm_model_name)
+                            if not ram:
+                                close = difflib.get_close_matches(norm_model_name, norm_ram_map.keys(), n=1, cutoff=0.8)
+                                if close:
+                                    ram = norm_ram_map[close[0]]
+                    if not ram and ram_db:
+                        try:
+                            ram_val = int(ram_db)
+                            if ram_val in (4, 6, 8, 12, 16):
+                                ram = f"{ram_val} GB"
+                            elif ram_val == 3:
+                                ram = "3 GB"
+                        except Exception:
+                            ram = str(ram_db)
+                    if not ram:
+                        ram = "Unknown"
+                        unmatched_ram.append(model_name)
+                # CHIP: Check manual override first
+                if chip is None:
+                    chip = MANUAL_CHIP_OVERRIDE.get(model_name)
                     if not chip:
-                        # Use a stricter cutoff now that we're matching within the same family
-                        close = difflib.get_close_matches(norm_model_name, family_keys, n=1, cutoff=0.8)
-                        if close:
-                            chip = norm_chip_map[close[0]]
-            # Fallback to board config mapping if still not found
-            if not chip and row[2] in BOARD_CHIP_MAPPING:
-                chip = BOARD_CHIP_MAPPING[row[2]]
-            # Remove 'Bionic' from chip name if present
-            if chip and isinstance(chip, str):
-                chip = chip.replace('Bionic', '').strip()
-            if model_name == "iPad Pro (12.9-inch) (5th generation)":
-                sku = "iPad13,8"
+                        if norm_chip_map:
+                            family = get_ipad_family(norm_model_name)
+                            family_keys = [k for k in norm_chip_map.keys() if get_ipad_family(k) == family]
+                            chip = norm_chip_map.get(norm_model_name)
+                            if not chip:
+                                close = difflib.get_close_matches(norm_model_name, family_keys, n=1, cutoff=0.8)
+                                if close:
+                                    chip = norm_chip_map[close[0]]
+                    if not chip and row[2] in BOARD_CHIP_MAPPING:
+                        chip = BOARD_CHIP_MAPPING[row[2]]
+                    if chip and isinstance(chip, str):
+                        chip = chip.replace('Bionic', '').strip()
+            if model_name in MANUAL_SKU_OVERRIDE:
+                skus = MANUAL_SKU_OVERRIDE[model_name].split()
+            # Sort SKUs by the numeric part after the comma
+            def sku_sort_key(s):
+                m = re.match(r"iPad(\d+),(\d+)", s)
+                return (int(m.group(1)), int(m.group(2))) if m else (s,)
+            skus = sorted(skus, key=sku_sort_key)
             # Only include A12 or newer, or M-series chips
             if not is_chip_at_least_a12(chip):
                 continue
-            menu[model_name] = { 
-                "sku": sku, 
-                "chip": chip, 
+            menu[model_name] = {
+                "sku": " ".join(skus),
+                "chip": chip,
                 "ram": ram
             }
         if unmatched_chips:
@@ -298,17 +336,17 @@ def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str,
             for name in unmatched_ram:
                 sku = menu[name]["sku"] if name in menu and "sku" in menu[name] else "?"
                 print(f"  {name} (SKU: {sku})")
-        return { 
+        return {
             "date_generated": datetime.now().isoformat(),
             "xcode_version": xcode_version,
-            "total_menu": menu 
+            "total_menu": menu
         }
     except sqlite3.Error as e:
         print(f"Database error: {e}")
-        return { 
+        return {
             "date_generated": datetime.now().isoformat(),
             "xcode_version": xcode_version,
-            "total_menu": {} 
+            "total_menu": {}
         }
     finally:
         conn.close()
@@ -348,7 +386,8 @@ def main():
     ram_map = { name: meta["ram"] for name, meta in wiki_devices.items() }
     chip_map = { name: meta["chip"] for name, meta in wiki_devices.items() }
     print(f"Generating iPad device menu (from {selected_version}) with RAM details...")
-    menu_data = generate_device_menu_json(db_path=selected_path, ram_map=ram_map, chip_map=chip_map, xcode_version=selected_version)
+    xcode_version_str = get_xcode_version_from_db_path(selected_path)
+    menu_data = generate_device_menu_json(db_path=selected_path, ram_map=ram_map, chip_map=chip_map, xcode_version=xcode_version_str)
     total_menu = {}
     for model_name, info in menu_data["total_menu"].items():
         total_menu[model_name] = {
@@ -358,7 +397,7 @@ def main():
         }
     final = {
         "date_generated": menu_data["date_generated"],
-        "xcode_version": menu_data["xcode_version"],
+        "xcode_version": xcode_version_str,
         "total_menu": total_menu
     }
     

@@ -322,7 +322,7 @@ def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str,
             if not is_chip_at_least_a12(chip):
                 continue
             menu[model_name] = {
-                "sku": " ".join(skus),
+                "sku": skus,
                 "chip": chip,
                 "ram": ram
             }

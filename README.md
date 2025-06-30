@@ -1,12 +1,12 @@
 # Apple Device Knowledge Base
 
-This project provides a standalone script to generate a comprehensive JSON database of Apple device specifications (currently iPhone models) by combining data from public sources.
+This project provides standalone scripts to generate a comprehensive JSON database of Apple device specifications (iPhone and iPad models) by combining data from public sources.
 
 ## Features
 
-- Fetches iPhone model specs (chip, RAM, SKU, release date) from Wikipedia, TheAppleWiki, and local Xcode resources
-- Merges and standardizes the data into a single JSON file
-- No dependencies on other scripts or files—just run one script
+- Fetches device specs (chip, RAM, SKU) from TheAppleWiki and local Xcode resources
+- Merges and standardizes the data into JSON files
+- No dependencies on other scripts or files—just run the scripts you need
 
 ## Usage
 
@@ -15,12 +15,16 @@ This project provides a standalone script to generate a comprehensive JSON datab
    pip install -r requirements.txt
    ```
 
-2. **Run the script:**
+2. **Run the scripts:**
    ```bash
-   python generate_apple_device_specs.py
+   # For iPhone data
+   python src/generate_apple_device_specs.py
+   
+   # For iPad data
+   python src/generate_ipad_device_specs.py
    ```
 
-   This will create or update `apple/iPhone.json` with the latest device data.
+   This will create or update the respective JSON files in the `apple/` directory.
 
 ## Requirements
 
@@ -30,30 +34,49 @@ This project provides a standalone script to generate a comprehensive JSON datab
 
 ## Output
 
-- `apple/iPhone.json`: Contains structured iPhone device data.
+- `apple/iPhone.json`: Contains structured iPhone device data
+- `apple/iPad.json`: Contains structured iPad device data
 
 ## Notes
 
-- The script is fully standalone. You do not need any other files to generate the data.
-- To extend support for more device types (iPad, Mac, etc.), update the script accordingly.
+- The scripts are fully standalone. You do not need any other files to generate the data.
+- Each script focuses on a specific device type (iPhone or iPad).
+- The data is filtered to include only recent devices:
+  - iPhones: iPhone XR/XS and newer models
+  - iPads: Models with A12 chip or newer
 
 ## Data Sources
 
 - [The Apple Wiki](https://theapplewiki.com/) for device specifications
-- Wikipedia for release dates
 - Xcode (for device SKU information)
 
 ## Data Format
 
+### iPhone Data Format
 ```json
 {
-  "date_generated": "YYYY-MM-DD",
-  "devices": {
+  "date_generated": "YYYY-MM-DDTHH:MM:SS.SSSSSS",
+  "xcode_version": "Version X.Y.Z (XXXXX)",
+  "total_menu": {
     "device_name": {
       "sku": "device_sku",
       "chip": "chip_name",
-      "ram": "X GB",
-      "release_date": "YYYY-MM-DD"
+      "ram": "X GB"
+    }
+  }
+}
+```
+
+### iPad Data Format
+```json
+{
+  "date_generated": "YYYY-MM-DDTHH:MM:SS.SSSSSS",
+  "xcode_version": "Version X.Y.Z (XXXXX)",
+  "total_menu": {
+    "device_name": {
+      "sku": ["sku1", "sku2"],  // List of SKUs for different variants
+      "chip": "chip_name",
+      "ram": "X GB"
     }
   }
 }
@@ -64,10 +87,15 @@ This project provides a standalone script to generate a comprehensive JSON datab
 ```
 .
 ├── README.md
-├── generate_apple_device_specs.py
+├── LICENSE
+├── requirements.txt
+├── android/          # Future support for Android devices
 ├── apple/
-│   └── iPhone.json    # iPhone specifications
-└── requirements.txt
+│   ├── iPhone.json  # iPhone specifications
+│   └── iPad.json    # iPad specifications
+└── src/
+    ├── generate_apple_device_specs.py  # iPhone data generator
+    └── generate_ipad_device_specs.py   # iPad data generator
 ```
 
 ## Contributing
@@ -82,10 +110,9 @@ Contributions are welcome! Please feel free to submit a Pull Request. For major 
 
 ## License
 
-[Add your license information here]
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
 - [The Apple Wiki](https://theapplewiki.com/) for device specifications
-- Wikipedia for release dates
-- Xcode for device SKU information (if available) 
+- Xcode for device SKU information 

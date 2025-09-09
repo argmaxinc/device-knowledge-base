@@ -104,12 +104,18 @@ def find_xcode_databases() -> List[Tuple[str, str]]:
     if os.path.exists(standard_path):
         databases.append(("Xcode", standard_path))
     
-    # Check Xcode beta versions and copy versions
+    # Check additional Xcode installations
     beta_paths = glob.glob("/Applications/Xcode-*.app/Contents/Developer/Platforms/iPhoneOS.platform/usr/standalone/device_traits.db")
     beta_paths.extend(glob.glob("/Applications/Xcode copy*.app/Contents/Developer/Platforms/iPhoneOS.platform/usr/standalone/device_traits.db"))
     for path in beta_paths:
-        # Extract version from path (e.g., Xcode-26.0.0-Beta, Xcode copy 2.app)
-        version = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(path))))))
+        app_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(path))))))
+        # Assign clean version names
+        if "copy 2" in app_name.lower():
+            version = "Xcode 26.0"
+        elif "copy" in app_name.lower():
+            version = "Xcode 16.4"
+        else:
+            version = app_name
         databases.append((version, path))
     
     return sorted(databases, key=lambda x: x[0])
@@ -310,10 +316,10 @@ def main():
     for i, (version, path) in enumerate(available_dbs, 1):
         print(f"{i}. {version} ({path})")
     
-    # Use Xcode copy 2.app first (Xcode 26.0), then others
+    # Use Xcode 26.0 first, then other versions
     selected_version, selected_path = next(
-        ((v, p) for v, p in available_dbs if "copy 2" in p),
-        next(((v, p) for v, p in available_dbs if "Beta" in v or "Developer" in v), available_dbs[-1])
+        ((v, p) for v, p in available_dbs if "26.0" in v),
+        next(((v, p) for v, p in available_dbs if "Developer" in v), available_dbs[-1])
     )
     print(f"\nUsing {selected_version} database...")
     

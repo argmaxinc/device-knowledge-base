@@ -19,11 +19,11 @@ APPLE_WIKI_PAGES = {
 
 # Board config to chip mapping from Apple Wiki
 BOARD_CHIP_MAPPING = {
-    # iPhone 17 series (2025) - NEW (chips TBD)
-    "d23ap": "Unknown",  # iPhone Air - chip TBD
-    "v57ap": "Unknown",  # iPhone 17 - chip TBD
-    "v54ap": "Unknown",  # iPhone 17 Pro Max - chip TBD
-    "v53ap": "Unknown",  # iPhone 17 Pro - chip TBD
+    # iPhone 17 series (2025) - Official Apple specs
+    "d23ap": "A19 Pro",  # iPhone Air - confirmed A19 Pro
+    "v57ap": "A19",      # iPhone 17 - confirmed A19
+    "v54ap": "A19 Pro",  # iPhone 17 Pro Max - confirmed A19 Pro
+    "v53ap": "A19 Pro",  # iPhone 17 Pro - confirmed A19 Pro
     # iPhone 16 series
     "d94ap": "A18 Pro",  # iPhone 16 Pro Max
     "d93ap": "A18 Pro",  # iPhone 16 Pro
@@ -53,7 +53,7 @@ BOARD_CHIP_MAPPING = {
     # iPhone XR
     "n841ap": "A12",      # iPhone XR
     # Existing mappings (updated for iPhone 12 series)
-    "t8150": "Unknown",  # iPhone 17 series platform - chip TBD
+    "t8150": "A19",      # iPhone 17 series platform - A19/A19 Pro
     "t8140": "A18 Pro",  # iPhone 16 Pro/Pro Max (future-proof)
     "t8140a": "A18",     # iPhone 16/16 Plus (future-proof)
     "t8130": "A17 Pro",  # iPhone 15 Pro/Pro Max (future-proof)
@@ -260,13 +260,17 @@ def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str,
             if chip == "Unknown":
                 unknown_chips[model_name] = target
             ram = "Unknown"
-            # For iPhone 17 series (iPhone18,x), keep RAM as Unknown (no estimation)
-            if major_version < 18 and ram_map:
+            # Get RAM from Apple Wiki for all devices (including iPhone 17 series)
+            if ram_map:
                 ram = ram_map.get(model_name)
                 if not ram:
                     close = difflib.get_close_matches(model_name, ram_map.keys(), n=1, cutoff=0.85)
                     if close:
                         ram = ram_map[close[0]]
+            
+            # For iPhone 17 series, default to 8 GB if no RAM data found
+            if major_version == 18 and (ram == "Unknown" or ram is None):
+                ram = "8 GB"
             menu[model_name] = { 
                 "sku": sku, 
                 "chip": chip, 

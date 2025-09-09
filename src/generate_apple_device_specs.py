@@ -19,6 +19,11 @@ APPLE_WIKI_PAGES = {
 
 # Board config to chip mapping from Apple Wiki
 BOARD_CHIP_MAPPING = {
+    # iPhone 17 series (2025) - NEW (chips TBD)
+    "d23ap": "Unknown",  # iPhone Air - chip TBD
+    "v57ap": "Unknown",  # iPhone 17 - chip TBD
+    "v54ap": "Unknown",  # iPhone 17 Pro Max - chip TBD
+    "v53ap": "Unknown",  # iPhone 17 Pro - chip TBD
     # iPhone 16 series
     "d94ap": "A18 Pro",  # iPhone 16 Pro Max
     "d93ap": "A18 Pro",  # iPhone 16 Pro
@@ -48,6 +53,7 @@ BOARD_CHIP_MAPPING = {
     # iPhone XR
     "n841ap": "A12",      # iPhone XR
     # Existing mappings (updated for iPhone 12 series)
+    "t8150": "Unknown",  # iPhone 17 series platform - chip TBD
     "t8140": "A18 Pro",  # iPhone 16 Pro/Pro Max (future-proof)
     "t8140a": "A18",     # iPhone 16/16 Plus (future-proof)
     "t8130": "A17 Pro",  # iPhone 15 Pro/Pro Max (future-proof)
@@ -98,10 +104,11 @@ def find_xcode_databases() -> List[Tuple[str, str]]:
     if os.path.exists(standard_path):
         databases.append(("Xcode", standard_path))
     
-    # Check Xcode beta versions
+    # Check Xcode beta versions and copy versions
     beta_paths = glob.glob("/Applications/Xcode-*.app/Contents/Developer/Platforms/iPhoneOS.platform/usr/standalone/device_traits.db")
+    beta_paths.extend(glob.glob("/Applications/Xcode copy*.app/Contents/Developer/Platforms/iPhoneOS.platform/usr/standalone/device_traits.db"))
     for path in beta_paths:
-        # Extract version from path (e.g., Xcode-26.0.0-Beta)
+        # Extract version from path (e.g., Xcode-26.0.0-Beta, Xcode copy 2.app)
         version = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(path))))))
         databases.append((version, path))
     
@@ -247,13 +254,14 @@ def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str,
             if not match:
                 continue
             major_version = int(match.group(1))
-            if major_version < 11:
+            if major_version < 11:  # Include iPhone 11 and newer (iPhone11,x through iPhone18,x)
                 continue
             chip = get_chip_from_board_config(target)
             if chip == "Unknown":
                 unknown_chips[model_name] = target
             ram = "Unknown"
-            if ram_map:
+            # For iPhone 17 series (iPhone18,x), keep RAM as Unknown (no estimation)
+            if major_version < 18 and ram_map:
                 ram = ram_map.get(model_name)
                 if not ram:
                     close = difflib.get_close_matches(model_name, ram_map.keys(), n=1, cutoff=0.85)
@@ -298,10 +306,10 @@ def main():
     for i, (version, path) in enumerate(available_dbs, 1):
         print(f"{i}. {version} ({path})")
     
-    # Use the beta version if available, otherwise use the latest
+    # Use Xcode copy 2.app first (Xcode 26.0), then others
     selected_version, selected_path = next(
-        ((v, p) for v, p in available_dbs if "Beta" in v or "Developer" in v),
-        available_dbs[-1]
+        ((v, p) for v, p in available_dbs if "copy 2" in p),
+        next(((v, p) for v, p in available_dbs if "Beta" in v or "Developer" in v), available_dbs[-1])
     )
     print(f"\nUsing {selected_version} database...")
     

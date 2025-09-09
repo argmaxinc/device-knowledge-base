@@ -1,0 +1,165 @@
+{
+  "date_generated": "2025-09-09T12:28:33.076229",
+  "xcode_version": "Version 16.3 (16E140)",
+  "total_menu": {
+    "MacBook Air (2024, M4)": {
+      "sku": [
+        "Mac16,12",
+        "Mac16,13"
+      ],
+      "chip": "M4",
+      "ram": "8 GB"
+    },
+    "MacBook Pro (2024, M4)": {
+      "sku": [
+        "Mac16,1",
+        "Mac16,5",
+        "Mac16,6",
+        "Mac16,7",
+        "Mac16,8"
+      ],
+      "chip": "M4",
+      "ram": "8 GB"
+    },
+    "Mac mini (2024, M4)": {
+      "sku": [
+        "Mac16,10",
+        "Mac16,11"
+      ],
+      "chip": "M4",
+      "ram": "8 GB"
+    },
+    "iMac (2024, M4)": {
+      "sku": [
+        "Mac16,2",
+        "Mac16,3"
+      ],
+      "chip": "M4",
+      "ram": "8 GB"
+    },
+    "iMac (2023, M3)": {
+      "sku": [
+        "Mac15,4",
+        "Mac15,5"
+      ],
+      "chip": "M3",
+      "ram": "8 GB"
+    },
+    "MacBook Pro (2023, M3)": {
+      "sku": [
+        "Mac15,3",
+        "Mac15,6",
+        "Mac15,7",
+        "Mac15,8",
+        "Mac15,9"
+      ],
+      "chip": "M3",
+      "ram": "8 GB"
+    },
+    "MacBook Air (2024, M3)": {
+      "sku": [
+        "Mac15,12",
+        "Mac15,13"
+      ],
+      "chip": "M3",
+      "ram": "8 GB"
+    },
+    "MacBook Air (2022, M2)": {
+      "sku": [
+        "Mac14,2",
+        "Mac14,15"
+      ],
+      "chip": "M2",
+      "ram": "8 GB"
+    },
+    "MacBook Pro (2022, M2)": {
+      "sku": [
+        "Mac14,7",
+        "Mac14,5",
+        "Mac14,6",
+        "Mac14,9",
+        "Mac14,10"
+      ],
+      "chip": "M2",
+      "ram": "8 GB"
+    },
+    "Mac Mini (2023, M2)": {
+      "sku": [
+        "Mac14,3",
+        "Mac14,12"
+      ],
+      "chip": "M2",
+      "ram": "8 GB"
+    },
+    "Mac Pro (2023, M2)": {
+      "sku": [
+        "Mac14,8"
+      ],
+      "chip": "M2",
+      "ram": "64 GB"
+    },
+    "Mac Studio (2022, M2)": {
+      "sku": [
+        "Mac14,13",
+        "Mac14,14"
+      ],
+      "chip": "M2 Ultra",
+      "ram": "32 GB"
+    },
+    "MacBook Pro (2020, M1)": {
+      "sku": [
+        "MacBookPro17,1",
+        "MacBookPro18,1",
+        "MacBookPro19,1"
+      ],
+      "chip": "M1",
+      "ram": "8 GB"
+    },
+    "MacBook Air (2020, M1)": {
+      "sku": [
+        "MacBookAir10,1"
+      ],
+      "chip": "M1",
+      "ram": "8 GB"
+    },
+    "Mac Mini (2020, M1)": {
+      "sku": [
+        "Macmini9,1"
+      ],
+      "chip": "M1",
+      "ram": "8 GB"
+    },
+    "iMac (2021, M1)": {
+      "sku": [
+        "iMac21,1",
+        "iMac21,2"
+      ],
+      "chip": "M1",
+      "ram": "8 GB"
+    },
+    "Mac Studio (2022, M1)": {
+      "sku": [
+        "Mac13,1",
+        "Mac13,2"
+      ],
+      "chip": "M1",
+      "ram": "32 GB"
+    },
+    "Mac Studio (M4 Max)": {
+      "sku": [
+        "Mac16,9",
+        "Mac16,10"
+      ],
+      "chip": "M4 Max",
+      "ram": "38 GB"
+    },
+    "Mac Studio (M3 Ultra)": {
+      "sku": [
+        "Mac15,17",
+        "Mac15,18"
+      ],
+      "chip": "M3 Ultra",
+      "ram": "96 GB"
+    }
+  }
+}

@@ -106,16 +106,9 @@ def find_xcode_databases() -> List[Tuple[str, str]]:
     
     # Check additional Xcode installations
     beta_paths = glob.glob("/Applications/Xcode-*.app/Contents/Developer/Platforms/iPhoneOS.platform/usr/standalone/device_traits.db")
-    beta_paths.extend(glob.glob("/Applications/Xcode copy*.app/Contents/Developer/Platforms/iPhoneOS.platform/usr/standalone/device_traits.db"))
     for path in beta_paths:
         app_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(path))))))
-        # Assign clean version names
-        if "copy 2" in app_name.lower():
-            version = "Xcode 26.0"
-        elif "copy" in app_name.lower():
-            version = "Xcode 16.4"
-        else:
-            version = app_name
+        version = app_name
         databases.append((version, path))
     
     return sorted(databases, key=lambda x: x[0])
@@ -316,11 +309,8 @@ def main():
     for i, (version, path) in enumerate(available_dbs, 1):
         print(f"{i}. {version} ({path})")
     
-    # Use Xcode 26.0 first, then other versions
-    selected_version, selected_path = next(
-        ((v, p) for v, p in available_dbs if "26.0" in v),
-        next(((v, p) for v, p in available_dbs if "Developer" in v), available_dbs[-1])
-    )
+    # Use the latest available version
+    selected_version, selected_path = available_dbs[0] if available_dbs else (None, None)
     print(f"\nUsing {selected_version} database...")
     
     # Fetch Apple Wiki data (for chip and RAM details)

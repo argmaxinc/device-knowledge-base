@@ -18,7 +18,7 @@ APPLE_WIKI_PAGES = {
     "iPad": "List_of_iPads",
 }
 
-# Board config to chip mapping from Apple Wiki (copy iPhone mapping for now, but this is likely incomplete for iPad)
+# Board config to chip mapping from Apple Wiki (adapted from iPhone mapping, but this may be incomplete for iPad)
 BOARD_CHIP_MAPPING = {
     # M4 iPads
     "j720ap": "M4", "j717ap": "M4",

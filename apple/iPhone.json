@@ -1,7 +1,27 @@
 {
-  "date_generated": "2025-06-16T15:52:13.069236",
+  "date_generated": "2025-09-09T16:05:33.639993",
   "xcode_version": "Developer",
   "total_menu": {
+    "iPhone Air": {
+      "sku": "iPhone18,4",
+      "chip": "A19 Pro",
+      "ram": "8 GB"
+    },
+    "iPhone 17": {
+      "sku": "iPhone18,3",
+      "chip": "A19",
+      "ram": "8 GB"
+    },
+    "iPhone 17 Pro Max": {
+      "sku": "iPhone18,2",
+      "chip": "A19 Pro",
+      "ram": "8 GB"
+    },
+    "iPhone 17 Pro": {
+      "sku": "iPhone18,1",
+      "chip": "A19 Pro",
+      "ram": "8 GB"
+    },
     "iPhone 16e": {
       "sku": "iPhone17,5",
       "chip": "A18",

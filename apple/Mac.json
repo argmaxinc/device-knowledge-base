@@ -2,6 +2,14 @@
   "date_generated": "2025-09-09T12:28:33.076229",
   "xcode_version": "Version 16.3 (16E140)",
   "total_menu": {
+    "MacBook Pro (2025, M5)": {
+      "sku": [
+        "Mac17,1",
+        "Mac17,2"
+      ],
+      "chip": "M5",
+      "ram": "16 GB"
+    },
     "MacBook Air (2024, M4)": {
       "sku": [
         "Mac16,12",

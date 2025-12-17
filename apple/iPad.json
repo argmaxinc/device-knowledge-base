@@ -2,6 +2,22 @@
   "date_generated": "2025-06-23T18:22:05.764459",
   "xcode_version": "Version 26.0 (17A5241e)",
   "total_menu": {
+    "iPad Pro 11-inch (M5)": {
+      "sku": [
+        "iPad17,1",
+        "iPad17,2"
+      ],
+      "chip": "M5",
+      "ram": "12 GB"
+    },
+    "iPad Pro 13-inch (M5)": {
+      "sku": [
+        "iPad17,3",
+        "iPad17,4"
+      ],
+      "chip": "M5",
+      "ram": "12 GB"
+    },
     "iPad Pro (11-inch) (2nd generation)": {
       "sku": [
         "iPad8,9",

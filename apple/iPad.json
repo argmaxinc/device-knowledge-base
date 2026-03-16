@@ -1,6 +1,6 @@
 {
-  "date_generated": "2025-06-23T18:22:05.764459",
-  "xcode_version": "Version 26.0 (17A5241e)",
+  "date_generated": "2026-03-16T14:31:45.403817",
+  "xcode_version": "Version 26.1 (17B54)",
   "total_menu": {
     "iPad Pro 11-inch (M5)": {
       "sku": [
@@ -16,6 +16,22 @@
         "iPad17,4"
       ],
       "chip": "M5",
+      "ram": "12 GB"
+    },
+    "iPad Air 13-inch (M4)": {
+      "sku": [
+        "iPad16,10",
+        "iPad16,11"
+      ],
+      "chip": "M4",
+      "ram": "12 GB"
+    },
+    "iPad Air 11-inch (M4)": {
+      "sku": [
+        "iPad16,8",
+        "iPad16,9"
+      ],
+      "chip": "M4",
       "ram": "12 GB"
     },
     "iPad Pro (11-inch) (2nd generation)": {
@@ -192,14 +208,6 @@
         "iPad12,2"
       ],
       "chip": "A13",
-      "ram": "3 GB"
-    },
-    "iPad (8th generation)": {
-      "sku": [
-        "iPad11,6",
-        "iPad11,7"
-      ],
-      "chip": "A12",
       "ram": "3 GB"
     },
     "iPad Air (3rd generation)": {

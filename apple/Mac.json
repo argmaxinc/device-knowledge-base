@@ -1,6 +1,6 @@
 {
-  "date_generated": "2025-09-09T12:28:33.076229",
-  "xcode_version": "Version 16.3 (16E140)",
+  "date_generated": "2026-03-16T15:56:32.043754",
+  "xcode_version": "Version 26.1 (17B54)",
   "total_menu": {
     "MacBook Pro (2025, M5)": {
       "sku": [
@@ -9,6 +9,37 @@
       ],
       "chip": "M5",
       "ram": "16 GB"
+    },
+    "MacBook Pro (2026, M5 Pro)": {
+      "sku": [
+        "Mac17,8",
+        "Mac17,9"
+      ],
+      "chip": "M5 Pro",
+      "ram": "24 GB"
+    },
+    "MacBook Pro (2026, M5 Max)": {
+      "sku": [
+        "Mac17,6",
+        "Mac17,7"
+      ],
+      "chip": "M5 Max",
+      "ram": "36 GB"
+    },
+    "MacBook Air (2026, M5)": {
+      "sku": [
+        "Mac17,3",
+        "Mac17,4"
+      ],
+      "chip": "M5",
+      "ram": "16 GB"
+    },
+    "MacBook Neo (2026, A18 Pro)": {
+      "sku": [
+        "Mac17,5"
+      ],
+      "chip": "A18 Pro",
+      "ram": "8 GB"
     },
     "MacBook Air (2024, M4)": {
       "sku": [

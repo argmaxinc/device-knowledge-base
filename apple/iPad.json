@@ -1,6 +1,6 @@
 {
   "date_generated": "2026-03-16T14:31:45.403817",
-  "xcode_version": "Version 26.1 (17B54)",
+  "xcode_version": "Version 26.3 (17C529)",
   "total_menu": {
     "iPad Pro 11-inch (M5)": {
       "sku": [
@@ -208,6 +208,14 @@
         "iPad12,2"
       ],
       "chip": "A13",
+      "ram": "3 GB"
+    },
+    "iPad (8th generation)": {
+      "sku": [
+        "iPad11,6",
+        "iPad11,7"
+      ],
+      "chip": "A12",
       "ram": "3 GB"
     },
     "iPad Air (3rd generation)": {

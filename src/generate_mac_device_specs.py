@@ -1,7 +1,6 @@
 import requests
 import sqlite3
 import re
-import difflib
 import os
 import json
 import glob
@@ -11,12 +10,12 @@ from urllib3.util.retry import Retry
 from typing import Dict, Any, Optional, List, Tuple
 import subprocess
 
-# --- Apple Wiki Data ---
-# This script generates Mac device specifications for M1 and newer models only
-APPLE_WIKI_API_URL = "https://theapplewiki.com/api.php"
-APPLE_WIKI_PAGES = {
-    "Mac": "List_of_Macs",
-}
+# --- AppleDB (MIT licensed) ---
+# This script generates Mac device specifications for M1 and newer models only.
+# Xcode's device_traits.db has no Mac rows, so the manual tables below are the source
+# and AppleDB is used to validate each identifier and chip.
+APPLEDB_INDEX_URL = "https://api.appledb.dev/device/main.json"
+USER_AGENT = "device-knowledge-base (https://github.com/argmaxinc/device-knowledge-base)"
 
 # Board config to chip mapping for Macs (M1 and newer only)
 BOARD_CHIP_MAPPING = {
@@ -148,7 +147,7 @@ MANUAL_SKU_OVERRIDE = {
     "Mac Studio (2022, M2)": "Mac14,13 Mac14,14",
     
     # M1 Series (2020-2022) - Based on screenshot
-    "MacBook Pro (2020, M1)": "MacBookPro17,1 MacBookPro18,1 MacBookPro19,1",
+    "MacBook Pro (2020, M1)": "MacBookPro17,1 MacBookPro18,1 MacBookPro18,2 MacBookPro18,3 MacBookPro18,4",
     "MacBook Air (2020, M1)": "MacBookAir10,1",
     "Mac Mini (2020, M1)": "Macmini9,1",
     "iMac (2021, M1)": "iMac21,1 iMac21,2",
@@ -203,6 +202,7 @@ DEFAULT_DB_PATH = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS
 def create_retry_session():
     """Create a requests session with retry logic."""
     session = requests.Session()
+    session.headers["User-Agent"] = USER_AGENT
     retries = Retry(
         total=5, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504], allowed_methods=["GET"]
     )
@@ -210,82 +210,31 @@ def create_retry_session():
     session.mount("https://", adapter)
     return session
 
-def fetch_wiki_text(session, device_type="Mac"):
-    """Fetch Mac device data from Apple Wiki."""
-    params = {
-        "action": "query",
-        "titles": APPLE_WIKI_PAGES[device_type],
-        "prop": "revisions",
-        "rvprop": "content",
-        "format": "json"
-    }
-    resp = session.get(APPLE_WIKI_API_URL, params=params)
+def fetch_appledb_index(session) -> Dict[str, Dict[str, Any]]:
+    """Fetch the AppleDB device index and key it by identifier (e.g. 'Mac17,14')."""
+    resp = session.get(APPLEDB_INDEX_URL, timeout=60)
     resp.raise_for_status()
-    data = resp.json()
-    pages = data["query"]["pages"]
-    for page_id in pages:
-        if "revisions" in pages[page_id]:
-            return pages[page_id]["revisions"][0]["*"]
-    raise RuntimeError("Wiki text not found!")
+    index = {}
+    for entry in resp.json():
+        identifiers = entry.get("identifier") or []
+        if isinstance(identifiers, str):
+            identifiers = [identifiers]
+        for identifier in identifiers:
+            index.setdefault(identifier, entry)
+    return index
 
-def standardize_ram(ram_str):
-    """Standardize RAM format."""
-    if ram_str == "Unknown":
-        return ram_str
-    ram_str = ram_str.strip().upper()
-    match = re.search(r'(\d+)\s*(GB|MB|G|M)(?:\s*(?:LPDDR\d+X)?)?', ram_str)
-    if not match:
-        return ram_str
-    number, unit = match.groups()
-    if unit in ['G', 'GB']:
-        unit = 'GB'
-    elif unit in ['M', 'MB']:
-        unit = 'MB'
-    return f"{number} {unit}"
-
-def extract_chip(block):
-    """Extract chip information from wiki block."""
-    chip_match = re.search(r'\*\s*CPU:\s*(?:\[\[(.*?)\]\]\s*)?\"?([\w\d\s\-+]+)\"?', block)
-    if not chip_match:
-        return "Unknown"
-    chip = chip_match.group(2).strip()
-    
-    # Look for M-series chips first (M1, M1 Pro, M1 Max, M1 Ultra, M2, M3, M4, etc.)
-    m_chip_match = re.search(r'\bM\d+(?:\s*(?:Pro|Max|Ultra))?\b', chip)
-    if m_chip_match:
-        return m_chip_match.group(0)
-    
-    return "Unknown"
-
-def parse_wiki_devices(raw_text):
-    """Parse Mac devices from wiki text."""
-    entries = re.split(r"==\s*\[\[(.*?)\]\]\s*==", raw_text)
-    data = {}
-    for i in range(1, len(entries), 2):
-        name = entries[i].strip()
-        block = entries[i + 1]
-        if name.startswith("File:"): 
-            continue
-        
-        # Only include Mac models
-        if not (re.search(r"Mac", name, re.IGNORECASE) or re.search(r"Mac", block, re.IGNORECASE)):
-            continue
-        
-        chip = extract_chip(block)
-        
-        # Only include M1 and newer chips (M1, M1 Pro, M1 Max, M1 Ultra, M2, M2 Pro, M2 Max, M2 Ultra, M3, M3 Pro, M3 Max, M3 Ultra, M4, etc.)
-        if not (chip.startswith("M") or chip == "Unknown"):
-            continue
-        
-        ram_match = re.search(r"\*\s*RAM:\s*(.*?)\s*(?:\n|\r|$)", block, re.IGNORECASE)
-        ram = ram_match.group(1).strip() if ram_match else "Unknown"
-        ram = standardize_ram(ram)
-        
-        data[name] = {
-            "chip": chip,
-            "ram": ram
-        }
-    return data
+def validate_against_appledb(menu: Dict[str, Any], appledb: Dict[str, Dict[str, Any]]) -> None:
+    """Print any manual entry whose identifier is missing from AppleDB or whose chip family disagrees."""
+    if not appledb:
+        return
+    for model_name, info in menu.items():
+        family = info["chip"].split()[0]  # "M4 Max" -> "M4", "A18 Pro" -> "A18"
+        for sku in info["sku"]:
+            entry = appledb.get(sku)
+            if not entry:
+                print(f"  {model_name}: {sku} not found in AppleDB")
+            elif not (entry.get("soc") or "").startswith(family):
+                print(f"  {model_name}: {sku} is {entry.get('soc')} in AppleDB ({entry.get('name')}), table says {info['chip']}")
 
 def get_db_connection(db_path: str = DEFAULT_DB_PATH) -> Optional[sqlite3.Connection]:
     """Get database connection."""
@@ -319,7 +268,7 @@ def xcode_version_key(db_path: str) -> Tuple[int, ...]:
     match = re.search(r"Version (\d+(?:\.\d+)*)", get_xcode_version_from_db_path(db_path))
     return tuple(int(n) for n in match.group(1).split(".")) if match else (0,)
 
-def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str, str] = None, chip_map: Dict[str, str] = None, xcode_version: str = "Xcode") -> Dict[str, Any]:
+def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, xcode_version: str = "Xcode") -> Dict[str, Any]:
     """Generate Mac device menu JSON."""
     conn = get_db_connection(db_path)
     if not conn:
@@ -348,29 +297,15 @@ def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str,
             target = row[2]
             platform = row[3]
             
-            # Get chip from manual override, wiki, or board config
+            # Get chip from manual override or board config
             chip = MANUAL_CHIP_OVERRIDE.get(model_name)
-            if not chip and chip_map:
-                chip = chip_map.get(model_name)
-                if not chip:
-                    close = difflib.get_close_matches(model_name, chip_map.keys(), n=1, cutoff=0.8)
-                    if close:
-                        chip = chip_map[close[0]]
-            
             if not chip:
                 chip = get_chip_from_board_config(target)
                 if chip == "Unknown":
                     unmatched_chips.append(model_name)
             
-            # Get RAM from manual override, wiki, or default
+            # Get RAM from manual override or default
             ram = MANUAL_RAM_OVERRIDE.get(model_name)
-            if not ram and ram_map:
-                ram = ram_map.get(model_name)
-                if not ram:
-                    close = difflib.get_close_matches(model_name, ram_map.keys(), n=1, cutoff=0.8)
-                    if close:
-                        ram = ram_map[close[0]]
-            
             if not ram:
                 # Default RAM for M1+ Macs based on chip type
                 if chip and "Pro" in chip:
@@ -440,29 +375,20 @@ def main():
     selected_version, selected_path = max(available_dbs, key=lambda vp: xcode_version_key(vp[1]))
     print(f"\nUsing {selected_version} database...")
     
-    # Fetch Apple Wiki data for Macs
-    print("Fetching Apple Wiki data for Mac...")
+    # Fetch AppleDB index to validate the manual tables against
+    print("Fetching AppleDB device index...")
     try:
-        session = create_retry_session()
-        wiki_raw = fetch_wiki_text(session, device_type="Mac")
-        wiki_devices = parse_wiki_devices(wiki_raw)
-        
-        ram_map = {name: meta["ram"] for name, meta in wiki_devices.items()}
-        chip_map = {name: meta["chip"] for name, meta in wiki_devices.items()}
-        
-        print(f"Found {len(wiki_devices)} Mac models in Wiki data")
+        appledb = fetch_appledb_index(create_retry_session())
+        print(f"Found {len(appledb)} identifiers in AppleDB")
     except Exception as e:
-        print(f"Warning: Could not fetch Wiki data: {e}")
-        ram_map = {}
-        chip_map = {}
+        print(f"Warning: Could not fetch AppleDB, skipping validation: {e}")
+        appledb = {}
     
     # Generate the device menu JSON
     print(f"Generating Mac device menu (from {selected_version})...")
     xcode_version_str = get_xcode_version_from_db_path(selected_path)
     menu_data = generate_device_menu_json(
         db_path=selected_path, 
-        ram_map=ram_map, 
-        chip_map=chip_map, 
         xcode_version=xcode_version_str
     )
     
@@ -489,6 +415,9 @@ def main():
         
         menu_data["total_menu"] = manual_menu
         print(f"Generated {len(manual_menu)} Mac models from manual overrides")
+    
+    print("\nValidating identifiers and chips against AppleDB...")
+    validate_against_appledb(menu_data["total_menu"], appledb)
     
     # Save to file
     with open("apple/Mac.json", "w") as f:

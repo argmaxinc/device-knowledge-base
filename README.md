@@ -4,7 +4,7 @@ This project provides standalone scripts to generate a comprehensive JSON databa
 
 ## Features
 
-- Fetches device specs (chip, RAM, SKU) from TheAppleWiki and local Xcode resources
+- Fetches device identifiers and chips from local Xcode resources and AppleDB, with RAM tables maintained in the scripts
 - Merges and standardizes the data into JSON files
 - No dependencies on other scripts or files—just run the scripts you need
 - Uses the newest Xcode installed in `/Applications` (`Xcode.app` or any `Xcode-*.app`) so the device database is as current as possible
@@ -33,7 +33,6 @@ This project provides standalone scripts to generate a comprehensive JSON databa
 ## Requirements
 
 - Python 3.7+
-- pandas
 - requests
 
 ## Output
@@ -50,14 +49,15 @@ This project provides standalone scripts to generate a comprehensive JSON databa
   - iPhones: iPhone XR/XS and newer models
   - iPads: Models with A12 chip or newer
   - Macs: Apple silicon models (M1 and newer, plus the A18 Pro MacBook Neo)
-- Xcode's device database does not list Macs, so the Mac script is driven by the manual tables at the top of `src/generate_mac_device_specs.py`. Add new Macs there.
-- RAM values are the base (entry) configuration for each model.
+- Xcode's device database does not list Macs, so the Mac script is driven by the manual tables at the top of `src/generate_mac_device_specs.py`. Add new Macs there. The script checks every identifier and chip against AppleDB.
+- RAM values are the base (entry) configuration for each model. Apple does not publish iPhone RAM, so the iPhone and iPad values are maintained as tables in the scripts.
+- If AppleDB is unreachable the scripts fall back to the board config mappings in the scripts.
 
 ## Data Sources
 
-- [The Apple Wiki](https://theapplewiki.com/) for device specifications
 - Xcode (for device SKU information)
-- [AppleDB](https://appledb.dev/) and Apple tech specs pages for Mac identifiers and base memory
+- [AppleDB](https://appledb.dev/) (MIT licensed) for device names, chips, and identifier validation
+- Apple tech specs pages for base memory where Apple publishes it
 
 ## Data Format
 
@@ -125,5 +125,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Acknowledgments
 
-- [The Apple Wiki](https://theapplewiki.com/) for device specifications
+- [AppleDB](https://appledb.dev/) for device specifications
 - Xcode for device SKU information 

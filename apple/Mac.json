@@ -1,5 +1,5 @@
 {
-  "date_generated": "2026-09-09T18:08:24.010872",
+  "date_generated": "2026-09-09T18:36:42.856467",
   "xcode_version": "Version 27.0 (27A266a)",
   "total_menu": {
     "Mac Studio (2026, M5 Max)": {
@@ -176,7 +176,9 @@
       "sku": [
         "MacBookPro17,1",
         "MacBookPro18,1",
-        "MacBookPro19,1"
+        "MacBookPro18,2",
+        "MacBookPro18,3",
+        "MacBookPro18,4"
       ],
       "chip": "M1",
       "ram": "8 GB"

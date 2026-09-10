@@ -1,7 +1,6 @@
 import requests
 import sqlite3
 import re
-import difflib
 import os
 import json
 import glob
@@ -11,14 +10,12 @@ from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from typing import Dict, Any, Optional, List, Tuple
 
-# --- Apple Wiki Data ---
-APPLE_WIKI_API_URL = "https://theapplewiki.com/api.php"
-APPLE_WIKI_PAGES = {
-    "iPhone": "List_of_iPhones",
-    # Extend for iPad, Mac, etc.
-}
+# --- AppleDB (MIT licensed) ---
+# One JSON index of every Apple device: identifier, marketing name, board config, SoC.
+APPLEDB_INDEX_URL = "https://api.appledb.dev/device/main.json"
+USER_AGENT = "device-knowledge-base (https://github.com/argmaxinc/device-knowledge-base)"
 
-# Board config to chip mapping from Apple Wiki
+# Board config to chip mapping, used when AppleDB is unavailable
 BOARD_CHIP_MAPPING = {
     # iPhone 18 series and iPhone Duo
     "v63ap": "A20 Pro",  # iPhone 18 Pro
@@ -86,16 +83,50 @@ BOARD_CHIP_MAPPING = {
     "d54pap": "A14",     # iPhone 12 Pro Max
 }
 
-# Marketing names for SKUs whose ProductDescription in device_traits.db is a placeholder
+# Marketing names for identifiers that Xcode lists under a placeholder description, used when AppleDB is unavailable
 PRODUCT_NAME_OVERRIDE = {
     "iPhone19,4": "iPhone Duo",
 }
 
-# RAM values that take precedence over the Apple Wiki
+# Physical RAM per model. Apple does not publish this for iPhone.
 MANUAL_RAM_OVERRIDE = {
-    "iPhone 18 Pro": "12 GB",
-    "iPhone 18 Pro Max": "12 GB",
     "iPhone Duo": "12 GB",
+    "iPhone 18 Pro Max": "12 GB",
+    "iPhone 18 Pro": "12 GB",
+    "iPhone 17e": "8 GB",
+    "iPhone Air": "12 GB",
+    "iPhone 17": "8 GB",
+    "iPhone 17 Pro Max": "12 GB",
+    "iPhone 17 Pro": "12 GB",
+    "iPhone 16e": "8 GB",
+    "iPhone 16 Plus": "8 GB",
+    "iPhone 16": "8 GB",
+    "iPhone 16 Pro Max": "8 GB",
+    "iPhone 16 Pro": "8 GB",
+    "iPhone 15 Pro Max": "8 GB",
+    "iPhone 15 Pro": "8 GB",
+    "iPhone 15 Plus": "6 GB",
+    "iPhone 15": "6 GB",
+    "iPhone 14 Pro Max": "6 GB",
+    "iPhone 14 Pro": "6 GB",
+    "iPhone 14 Plus": "6 GB",
+    "iPhone 14": "6 GB",
+    "iPhone SE (3rd generation)": "4 GB",
+    "iPhone 13": "4 GB",
+    "iPhone 13 mini": "4 GB",
+    "iPhone 13 Pro Max": "6 GB",
+    "iPhone 13 Pro": "6 GB",
+    "iPhone 12 Pro Max": "6 GB",
+    "iPhone 12 Pro": "6 GB",
+    "iPhone 12": "4 GB",
+    "iPhone 12 mini": "4 GB",
+    "iPhone SE (2nd generation)": "3 GB",
+    "iPhone 11 Pro Max": "4 GB",
+    "iPhone 11 Pro": "4 GB",
+    "iPhone 11": "4 GB",
+    "iPhone XR": "3 GB",
+    "iPhone XS Max": "4 GB",
+    "iPhone XS": "4 GB",
 }
 
 def get_chip_from_board_config(target: str) -> str:
@@ -158,9 +189,10 @@ def xcode_version_key(db_path: str) -> Tuple[int, ...]:
     match = re.search(r"Version (\d+(?:\.\d+)*)", get_xcode_version_from_db_path(db_path))
     return tuple(int(n) for n in match.group(1).split(".")) if match else (0,)
 
-# --- Helper functions for Apple Wiki (fetching RAM and chip details) ---
+# --- Helper functions for AppleDB (device names and chips) ---
 def create_retry_session():
     session = requests.Session()
+    session.headers["User-Agent"] = USER_AGENT
     retries = Retry(
         total=5, backoff_factor=1, status_forcelist=[429, 500, 502, 503, 504], allowed_methods=["GET"]
     )
@@ -168,83 +200,18 @@ def create_retry_session():
     session.mount("https://", adapter)
     return session
 
-def fetch_wiki_text(session, device_type="iPhone"):
-    params = {
-        "action": "query",
-        "titles": APPLE_WIKI_PAGES[device_type],
-        "prop": "revisions",
-        "rvprop": "content",
-        "format": "json"
-    }
-    resp = session.get(APPLE_WIKI_API_URL, params=params)
+def fetch_appledb_index(session) -> Dict[str, Dict[str, Any]]:
+    """Fetch the AppleDB device index and key it by identifier (e.g. 'iPhone19,2')."""
+    resp = session.get(APPLEDB_INDEX_URL, timeout=60)
     resp.raise_for_status()
-    data = resp.json()
-    pages = data["query"]["pages"]
-    for page_id in pages:
-        if "revisions" in pages[page_id]:
-            return pages[page_id]["revisions"][0]["*"]
-    raise RuntimeError("Wiki text not found!")
-
-def standardize_ram(ram_str):
-    if ram_str == "Unknown":
-        return ram_str
-    ram_str = ram_str.strip().upper()
-    match = re.search(r'(\d+)\s*(GB|MB|G|M)(?:\s*(?:LPDDR\d+X)?)?', ram_str)
-    if not match:
-        return ram_str
-    number, unit = match.groups()
-    if unit in ['G', 'GB']:
-        unit = 'GB'
-    elif unit in ['M', 'MB']:
-        unit = 'MB'
-    return f"{number} {unit}"
-
-def extract_chip(block):
-    chip_match = re.search(r'\*\s*CPU:\s*(?:\[\[(.*?)\]\]\s*)?\"?([\w\d\s\-+]+)\"?', block)
-    if not chip_match:
-        return "Unknown"
-    chip = chip_match.group(2).strip()
-    a_chip_match = re.search(r'\bA\d+(?:\s*(?:Pro|X|Bionic|Fusion|B))?\b', chip)
-    if a_chip_match:
-        return a_chip_match.group(0)
-    if "S5L8900" in chip:
-        return "S5L8900"
-    elif "S5L8920" in chip:
-        return "S5L8920"
-    elif "S5L8930" in chip:
-        return "S5L8930"
-    elif "S5L8940" in chip:
-        return "S5L8940"
-    elif "S5L8942" in chip:
-        return "S5L8942"
-    elif "S5L8945" in chip:
-        return "S5L8945"
-    elif "S5L8950" in chip:
-        return "S5L8950"
-    elif "S5L8955" in chip:
-        return "S5L8955"
-    return "Unknown"
-
-def parse_wiki_devices(raw_text):
-    entries = re.split(r"==\s*\[\[(.*?)\]\]\s*==", raw_text)
-    data = {}
-    for i in range(1, len(entries), 2):
-        name = entries[i].strip()
-        block = entries[i + 1]
-        if name.startswith("File:"): continue
-        # Only include iPhone XR/XS and newer (iPhone 11 or higher)
-        # Match 'iPhone XR', 'iPhone XS', or 'iPhone <number>' where number >= 11
-        if not (re.search(r"iPhone\s*(XR|XS|1[1-9]|[2-9][0-9])", name, re.IGNORECASE) or re.search(r"iPhone\s*(XR|XS|1[1-9]|[2-9][0-9])", block, re.IGNORECASE)):
-            continue
-        chip = extract_chip(block)
-        ram_match = re.search(r"\*\s*RAM:\s*(.*?)\s*(?:\n|\r|$)", block, re.IGNORECASE)
-        ram = ram_match.group(1).strip() if ram_match else "Unknown"
-        ram = standardize_ram(ram)
-        data[name] = {
-            "chip": chip,
-            "ram": ram
-        }
-    return data
+    index = {}
+    for entry in resp.json():
+        identifiers = entry.get("identifier") or []
+        if isinstance(identifiers, str):
+            identifiers = [identifiers]
+        for identifier in identifiers:
+            index.setdefault(identifier, entry)
+    return index
 
 # --- Helper functions for Xcode device_traits.db (menu JSON generation) ---
 def get_db_connection(db_path: str = DEFAULT_DB_PATH) -> Optional[sqlite3.Connection]:
@@ -257,15 +224,16 @@ def get_db_connection(db_path: str = DEFAULT_DB_PATH) -> Optional[sqlite3.Connec
         print(f"Error connecting to database: {e}")
         return None
 
-def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str, str] = None, xcode_version: str = "Xcode") -> Dict[str, Any]:
+def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, appledb: Dict[str, Dict[str, Any]] = None, xcode_version: str = "Xcode") -> Dict[str, Any]:
     """
-    Generate a JSON menu of all iPhone devices (XR/XS and newer) with their SKUs, chips, and RAM (using ram_map if provided).
+    Generate a JSON menu of all iPhone devices (XR/XS and newer) with their SKUs, chips, and RAM.
     
     Args:
         db_path: Path to device_traits.db
-        ram_map: Dictionary mapping device names to RAM specifications
+        appledb: AppleDB device index keyed by identifier (names and chips)
         xcode_version: Version of Xcode being used (for metadata)
     """
+    appledb = appledb or {}
     conn = get_db_connection(db_path)
     if not conn:
         return { "date_generated": datetime.now().isoformat(), "xcode_version": xcode_version, "total_menu": {} }
@@ -283,6 +251,8 @@ def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str,
         """)
         menu = {}
         unknown_chips = {}
+        unknown_ram = []
+        chip_mismatches = []
         for row in cursor.fetchall():
             model_name = row[0]
             sku = row[1]
@@ -291,35 +261,31 @@ def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str,
             # Print board config for iPhone 12 series
             if model_name in ["iPhone 12", "iPhone 12 mini", "iPhone 12 Pro", "iPhone 12 Pro Max"]:
                 print(f"DEBUG: {model_name} (SKU: {sku}) has board config: {target}")
-            model_name = PRODUCT_NAME_OVERRIDE.get(sku, model_name)
             match = re.match(r"iPhone(\d+),(\d+)", sku)
             if not match:
                 continue
             major_version = int(match.group(1))
             if major_version < 11:  # Include iPhone 11 and newer (iPhone11,x through iPhone18,x)
                 continue
+            entry = appledb.get(sku, {})
+            # Xcode lists unreleased hardware under a placeholder description; AppleDB has the marketing name
+            if model_name == "iPhone":
+                model_name = entry.get("name") or PRODUCT_NAME_OVERRIDE.get(sku, model_name)
             sku_key = (major_version, int(match.group(2)))
             # Some models ship under more than one identifier (regional variants).
             # Keep the lowest identifier as the canonical SKU for that model name.
             if model_name in menu and menu[model_name]["_sku_key"] <= sku_key:
                 continue
-            chip = get_chip_from_board_config(target)
+            board_chip = get_chip_from_board_config(target)
+            chip = entry.get("soc") or board_chip
             if chip == "Unknown":
                 unknown_chips[model_name] = target
+            elif board_chip not in ("Unknown", chip):
+                chip_mismatches.append(f"{model_name} ({sku}): AppleDB {chip}, board config {board_chip}")
             ram = MANUAL_RAM_OVERRIDE.get(model_name)
-            # Get RAM from Apple Wiki for all devices (including iPhone 17 series)
-            if not ram and ram_map:
-                ram = ram_map.get(model_name)
-                if not ram:
-                    close = difflib.get_close_matches(model_name, ram_map.keys(), n=1, cutoff=0.85)
-                    if close:
-                        ram = ram_map[close[0]]
-            if not ram or not re.match(r"\d+ (GB|MB)$", ram):
+            if not ram:
                 ram = "Unknown"
-            
-            # For iPhone 17 series, default to 8 GB if no RAM data found
-            if major_version == 18 and (ram == "Unknown" or ram is None):
-                ram = "8 GB"
+                unknown_ram.append(model_name)
             menu[model_name] = { 
                 "sku": sku, 
                 "chip": chip, 
@@ -331,6 +297,14 @@ def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str,
             print("\nDevices with unknown chips (board configs):")
             for model, board_config in unknown_chips.items():
                 print(f"{model}: {board_config}")
+        if chip_mismatches:
+            print("\nChip disagreements between AppleDB and BOARD_CHIP_MAPPING (AppleDB used):")
+            for line in chip_mismatches:
+                print(f"  {line}")
+        if unknown_ram:
+            print("\nDevices missing from MANUAL_RAM_OVERRIDE:")
+            for model in unknown_ram:
+                print(f"  {model}")
         return { 
             "date_generated": datetime.now().isoformat(),
             "xcode_version": xcode_version,
@@ -364,19 +338,19 @@ def main():
     selected_version, selected_path = max(available_dbs, key=lambda vp: xcode_version_key(vp[1]))
     print(f"\nUsing {selected_version} database...")
     
-    # Fetch Apple Wiki data (for chip and RAM details)
-    print("Fetching Apple Wiki data for iPhone...")
-    session = create_retry_session()
-    wiki_raw = fetch_wiki_text(session, device_type="iPhone")
-    wiki_devices = parse_wiki_devices(wiki_raw)
+    # Fetch AppleDB data (for names and chip details)
+    print("Fetching AppleDB device index...")
+    try:
+        appledb = fetch_appledb_index(create_retry_session())
+        print(f"Found {len(appledb)} identifiers in AppleDB")
+    except Exception as e:
+        print(f"Warning: Could not fetch AppleDB, falling back to BOARD_CHIP_MAPPING: {e}")
+        appledb = {}
     
-    # Generate a RAM map (from Apple Wiki) for merging into the menu JSON
-    ram_map = { name: meta["ram"] for name, meta in wiki_devices.items() }
-    
-    # Generate the device menu JSON (using device_traits.db and ram_map)
+    # Generate the device menu JSON (using device_traits.db and AppleDB)
     print(f"Generating iPhone device menu (from {selected_version}) with RAM details...")
     xcode_version_str = get_xcode_version_from_db_path(selected_path)
-    menu_data = generate_device_menu_json(db_path=selected_path, ram_map=ram_map, xcode_version=xcode_version_str)
+    menu_data = generate_device_menu_json(db_path=selected_path, appledb=appledb, xcode_version=xcode_version_str)
     
     # Add 'ram' to each device in total_menu
     # Sorted newest identifier first
@@ -400,4 +374,4 @@ def main():
     print(f"Done — iPhone menu saved to apple/iPhone.json (using {selected_version})")
 
 if __name__ == "__main__":
-    main() 
+    main()

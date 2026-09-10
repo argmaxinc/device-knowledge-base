@@ -20,8 +20,11 @@ APPLE_WIKI_PAGES = {
 
 # Board config to chip mapping from Apple Wiki (adapted from iPhone mapping, but this may be incomplete for iPad)
 BOARD_CHIP_MAPPING = {
+    # M5 iPads (iPad Pro, 2025)
+    "j817ap": "M5", "j818ap": "M5", "j820ap": "M5", "j821ap": "M5",
     # M4 iPads
-    "j720ap": "M4", "j717ap": "M4",
+    "j720ap": "M4", "j717ap": "M4", "j718ap": "M4", "j721ap": "M4",
+    "j707ap": "M4", "j708ap": "M4", "j737ap": "M4", "j738ap": "M4",
     # M2 iPads
     "j620ap": "M2", "j617ap": "M2",
     # M1 iPads
@@ -51,6 +54,7 @@ MANUAL_CHIP_OVERRIDE = {
     "iPad Air (4th generation)": "A14",
     "iPad Air (3rd generation)": "A12",
     "iPad Pro (12.9-inch) (5th generation)": "M1",
+    "iPad (8th generation)": "A12",
 }
 MANUAL_RAM_OVERRIDE = {
     "iPad (7th generation)": "3 GB",
@@ -77,6 +81,11 @@ MANUAL_RAM_OVERRIDE = {
     "iPad Pro 11-inch (M4)": "8 GB",
     "iPad Pro 13-inch (M4)": "8 GB",
     "iPad (A16)": "8 GB",
+    # Base configuration (iPad Pro (M5) ships 16 GB at 1 TB and above)
+    "iPad Pro 11-inch (M5)": "12 GB",
+    "iPad Pro 13-inch (M5)": "12 GB",
+    "iPad Air 11-inch (M4)": "12 GB",
+    "iPad Air 13-inch (M4)": "12 GB",
 }
 
 MANUAL_SKU_OVERRIDE = {
@@ -96,9 +105,10 @@ def find_xcode_databases() -> List[Tuple[str, str]]:
     standard_path = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/usr/standalone/device_traits.db"
     if os.path.exists(standard_path):
         databases.append(("Xcode", standard_path))
-    beta_paths = glob.glob("/Applications/Xcode-*.app/Contents/Developer/Platforms/iPhoneOS.platform/usr/standalone/device_traits.db")
-    for path in beta_paths:
-        version = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(path))))))
+    other_paths = glob.glob("/Applications/Xcode-*.app/Contents/Developer/Platforms/iPhoneOS.platform/usr/standalone/device_traits.db")
+    for path in other_paths:
+        app_match = re.search(r"/Applications/([^/]+\.app)/", path)
+        version = app_match.group(1) if app_match else path
         databases.append((version, path))
     return sorted(databases, key=lambda x: x[0])
 
@@ -230,6 +240,11 @@ def get_xcode_version_from_db_path(db_path: str) -> str:
         except Exception as e:
             return f"Unknown (error: {e})"
     return "Unknown"
+
+def xcode_version_key(db_path: str) -> Tuple[int, ...]:
+    """Numeric Xcode version for a device_traits.db path, for picking the newest install."""
+    match = re.search(r"Version (\d+(?:\.\d+)*)", get_xcode_version_from_db_path(db_path))
+    return tuple(int(n) for n in match.group(1).split(".")) if match else (0,)
 
 def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str, str] = None, chip_map: Dict[str, str] = None, xcode_version: str = "Xcode") -> Dict[str, Any]:
     conn = get_db_connection(db_path)
@@ -374,10 +389,8 @@ def main():
     print("Available Xcode databases:")
     for i, (version, path) in enumerate(available_dbs, 1):
         print(f"{i}. {version} ({path})")
-    selected_version, selected_path = next(
-        ((v, p) for v, p in available_dbs if "Beta" in v or "Developer" in v),
-        available_dbs[-1]
-    )
+    # Use the latest available version
+    selected_version, selected_path = max(available_dbs, key=lambda vp: xcode_version_key(vp[1]))
     print(f"\nUsing {selected_version} database...")
     print("Fetching Apple Wiki data for iPad...")
     session = create_retry_session()
@@ -388,8 +401,12 @@ def main():
     print(f"Generating iPad device menu (from {selected_version}) with RAM details...")
     xcode_version_str = get_xcode_version_from_db_path(selected_path)
     menu_data = generate_device_menu_json(db_path=selected_path, ram_map=ram_map, chip_map=chip_map, xcode_version=xcode_version_str)
+    # Newest identifier first, so the file reads top-down from the latest device
+    def first_sku_key(item):
+        m = re.match(r"iPad(\d+),(\d+)", item[1]["sku"][0])
+        return (int(m.group(1)), int(m.group(2))) if m else (0, 0)
     total_menu = {}
-    for model_name, info in menu_data["total_menu"].items():
+    for model_name, info in sorted(menu_data["total_menu"].items(), key=first_sku_key, reverse=True):
         total_menu[model_name] = {
             "sku": info["sku"],
             "chip": info["chip"],

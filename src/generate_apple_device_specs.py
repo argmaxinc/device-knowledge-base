@@ -5,6 +5,7 @@ import difflib
 import os
 import json
 import glob
+import subprocess
 from datetime import datetime
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -19,11 +20,17 @@ APPLE_WIKI_PAGES = {
 
 # Board config to chip mapping from Apple Wiki
 BOARD_CHIP_MAPPING = {
+    # iPhone 18 series and iPhone Duo
+    "v63ap": "A20 Pro",  # iPhone 18 Pro
+    "v64ap": "A20 Pro",  # iPhone 18 Pro Max
+    "v64sap": "A20 Pro", # iPhone 18 Pro Max (iPhone19,7)
+    "v68ap": "A20 Pro",  # iPhone Duo
     # iPhone 17 series (2025) - Official Apple specs
     "d23ap": "A19 Pro",  # iPhone Air - confirmed A19 Pro
     "v57ap": "A19",      # iPhone 17 - confirmed A19
     "v54ap": "A19 Pro",  # iPhone 17 Pro Max - confirmed A19 Pro
     "v53ap": "A19 Pro",  # iPhone 17 Pro - confirmed A19 Pro
+    "v159ap": "A19",     # iPhone 17e
     # iPhone 16 series
     "d94ap": "A18 Pro",  # iPhone 16 Pro Max
     "d93ap": "A18 Pro",  # iPhone 16 Pro
@@ -53,6 +60,7 @@ BOARD_CHIP_MAPPING = {
     # iPhone XR
     "n841ap": "A12",      # iPhone XR
     # Existing mappings (updated for iPhone 12 series)
+    "t8160": "A20 Pro",  # iPhone 18 Pro / Duo platform (future-proof)
     "t8150": "A19",      # iPhone 17 series platform - A19/A19 Pro
     "t8140": "A18 Pro",  # iPhone 16 Pro/Pro Max (future-proof)
     "t8140a": "A18",     # iPhone 16/16 Plus (future-proof)
@@ -70,11 +78,24 @@ BOARD_CHIP_MAPPING = {
     "d431": "A14",       # iPhone 12 Pro/Pro Max
     "d321ap": "A12",     # iPhone XR
     "d331ap": "A12",     # iPhone XS/XS Max
+    "d331pap": "A12",    # iPhone XS Max (iPhone11,6)
     # iPhone 12 series (all A14)
     "d52gap": "A14",     # iPhone 12 mini
     "d53gap": "A14",     # iPhone 12
     "d53pap": "A14",     # iPhone 12 Pro
     "d54pap": "A14",     # iPhone 12 Pro Max
+}
+
+# Marketing names for SKUs whose ProductDescription in device_traits.db is a placeholder
+PRODUCT_NAME_OVERRIDE = {
+    "iPhone19,4": "iPhone Duo",
+}
+
+# RAM values that take precedence over the Apple Wiki
+MANUAL_RAM_OVERRIDE = {
+    "iPhone 18 Pro": "12 GB",
+    "iPhone 18 Pro Max": "12 GB",
+    "iPhone Duo": "12 GB",
 }
 
 def get_chip_from_board_config(target: str) -> str:
@@ -105,16 +126,37 @@ def find_xcode_databases() -> List[Tuple[str, str]]:
         databases.append(("Xcode", standard_path))
     
     # Check additional Xcode installations
-    beta_paths = glob.glob("/Applications/Xcode-*.app/Contents/Developer/Platforms/iPhoneOS.platform/usr/standalone/device_traits.db")
-    for path in beta_paths:
-        app_name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(path))))))
-        version = app_name
+    other_paths = glob.glob("/Applications/Xcode-*.app/Contents/Developer/Platforms/iPhoneOS.platform/usr/standalone/device_traits.db")
+    for path in other_paths:
+        app_match = re.search(r"/Applications/([^/]+\.app)/", path)
+        version = app_match.group(1) if app_match else path
         databases.append((version, path))
     
     return sorted(databases, key=lambda x: x[0])
 
 # --- Xcode device_traits.db ---
 DEFAULT_DB_PATH = "/Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/usr/standalone/device_traits.db"
+
+def get_xcode_version_from_db_path(db_path: str) -> str:
+    """Extract the Xcode version string from the Xcode app bundle given a device_traits.db path."""
+    xcode_root = db_path.split("/Contents/")[0] + "/Contents"
+    xcodebuild_path = os.path.join(xcode_root, "Developer/usr/bin/xcodebuild")
+    if os.path.exists(xcodebuild_path):
+        try:
+            output = subprocess.check_output([xcodebuild_path, "-version"], universal_newlines=True)
+            lines = output.strip().split("\n")
+            if len(lines) >= 2:
+                version = lines[0].replace("Xcode ", "Version ")
+                build = lines[1].replace("Build version ", "")
+                return f"{version} ({build})"
+        except Exception as e:
+            return f"Unknown (error: {e})"
+    return "Unknown"
+
+def xcode_version_key(db_path: str) -> Tuple[int, ...]:
+    """Numeric Xcode version for a device_traits.db path, for picking the newest install."""
+    match = re.search(r"Version (\d+(?:\.\d+)*)", get_xcode_version_from_db_path(db_path))
+    return tuple(int(n) for n in match.group(1).split(".")) if match else (0,)
 
 # --- Helper functions for Apple Wiki (fetching RAM and chip details) ---
 def create_retry_session():
@@ -249,23 +291,31 @@ def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str,
             # Print board config for iPhone 12 series
             if model_name in ["iPhone 12", "iPhone 12 mini", "iPhone 12 Pro", "iPhone 12 Pro Max"]:
                 print(f"DEBUG: {model_name} (SKU: {sku}) has board config: {target}")
-            match = re.match(r"iPhone(\d+),", sku)
+            model_name = PRODUCT_NAME_OVERRIDE.get(sku, model_name)
+            match = re.match(r"iPhone(\d+),(\d+)", sku)
             if not match:
                 continue
             major_version = int(match.group(1))
             if major_version < 11:  # Include iPhone 11 and newer (iPhone11,x through iPhone18,x)
                 continue
+            sku_key = (major_version, int(match.group(2)))
+            # Some models ship under more than one identifier (regional variants).
+            # Keep the lowest identifier as the canonical SKU for that model name.
+            if model_name in menu and menu[model_name]["_sku_key"] <= sku_key:
+                continue
             chip = get_chip_from_board_config(target)
             if chip == "Unknown":
                 unknown_chips[model_name] = target
-            ram = "Unknown"
+            ram = MANUAL_RAM_OVERRIDE.get(model_name)
             # Get RAM from Apple Wiki for all devices (including iPhone 17 series)
-            if ram_map:
+            if not ram and ram_map:
                 ram = ram_map.get(model_name)
                 if not ram:
                     close = difflib.get_close_matches(model_name, ram_map.keys(), n=1, cutoff=0.85)
                     if close:
                         ram = ram_map[close[0]]
+            if not ram or not re.match(r"\d+ (GB|MB)$", ram):
+                ram = "Unknown"
             
             # For iPhone 17 series, default to 8 GB if no RAM data found
             if major_version == 18 and (ram == "Unknown" or ram is None):
@@ -274,7 +324,8 @@ def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str,
                 "sku": sku, 
                 "chip": chip, 
                 "ram": ram,
-                "board_config": target
+                "board_config": target,
+                "_sku_key": sku_key
             }
         if unknown_chips:
             print("\nDevices with unknown chips (board configs):")
@@ -310,7 +361,7 @@ def main():
         print(f"{i}. {version} ({path})")
     
     # Use the latest available version
-    selected_version, selected_path = available_dbs[0] if available_dbs else (None, None)
+    selected_version, selected_path = max(available_dbs, key=lambda vp: xcode_version_key(vp[1]))
     print(f"\nUsing {selected_version} database...")
     
     # Fetch Apple Wiki data (for chip and RAM details)
@@ -324,11 +375,14 @@ def main():
     
     # Generate the device menu JSON (using device_traits.db and ram_map)
     print(f"Generating iPhone device menu (from {selected_version}) with RAM details...")
-    menu_data = generate_device_menu_json(db_path=selected_path, ram_map=ram_map, xcode_version=selected_version)
+    xcode_version_str = get_xcode_version_from_db_path(selected_path)
+    menu_data = generate_device_menu_json(db_path=selected_path, ram_map=ram_map, xcode_version=xcode_version_str)
     
     # Add 'ram' to each device in total_menu
+    # Sorted newest identifier first
+    ordered = sorted(menu_data["total_menu"].items(), key=lambda kv: kv[1]["_sku_key"], reverse=True)
     total_menu = {}
-    for model_name, info in menu_data["total_menu"].items():
+    for model_name, info in ordered:
         total_menu[model_name] = {
             "sku": info["sku"],
             "chip": info["chip"],

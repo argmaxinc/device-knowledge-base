@@ -32,6 +32,17 @@ BOARD_CHIP_MAPPING = {
 
 # Manual chip overrides for Macs
 MANUAL_CHIP_OVERRIDE = {
+    # M5 Series and MacBook Neo (2025-2026)
+    "Mac Studio (2026, M5 Max)": "M5 Max",
+    "Mac Studio (2026, M5 Ultra)": "M5 Ultra",
+    "Mac mini (2026, M6)": "M6",
+    "Mac mini (2026, M5 Pro)": "M5 Pro",
+    "MacBook Pro (2026, M5 Pro)": "M5 Pro",
+    "MacBook Pro (2026, M5 Max)": "M5 Max",
+    "MacBook Air (2026, M5)": "M5",
+    "MacBook Neo (2026, A18 Pro)": "A18 Pro",
+    "MacBook Pro (2025, M5)": "M5",
+
     # M4 Series (2024-2025) - Updated to match the image exactly
     "MacBook Air (2024, M4)": "M4",
     "MacBook Pro (2024, M4)": "M4",
@@ -64,11 +75,22 @@ MANUAL_CHIP_OVERRIDE = {
 
 # Manual RAM overrides for Macs
 MANUAL_RAM_OVERRIDE = {
+    # M5 Series and MacBook Neo (2025-2026)
+    "Mac Studio (2026, M5 Max)": "36 GB",
+    "Mac Studio (2026, M5 Ultra)": "96 GB",
+    "Mac mini (2026, M6)": "16 GB",
+    "Mac mini (2026, M5 Pro)": "24 GB",
+    "MacBook Pro (2026, M5 Pro)": "24 GB",
+    "MacBook Pro (2026, M5 Max)": "36 GB",
+    "MacBook Air (2026, M5)": "16 GB",
+    "MacBook Neo (2026, A18 Pro)": "8 GB",
+    "MacBook Pro (2025, M5)": "16 GB",
+
     # M4 Series (2024-2025) - Updated to match the image exactly
-    "MacBook Air (2024, M4)": "8 GB",
-    "MacBook Pro (2024, M4)": "8 GB",
-    "Mac mini (2024, M4)": "8 GB",
-    "iMac (2024, M4)": "8 GB",
+    "MacBook Air (2024, M4)": "16 GB",
+    "MacBook Pro (2024, M4)": "16 GB",
+    "Mac mini (2024, M4)": "16 GB",
+    "iMac (2024, M4)": "16 GB",
     
     # M3 Series (2023-2024) - Updated to match the image exactly
     "iMac (2023, M3)": "8 GB",
@@ -90,12 +112,23 @@ MANUAL_RAM_OVERRIDE = {
     "Mac Studio (2022, M1)": "32 GB",
     
     # Additional high-end models from table
-    "Mac Studio (M4 Max)": "38 GB",
+    "Mac Studio (M4 Max)": "36 GB",
     "Mac Studio (M3 Ultra)": "96 GB"
 }
 
 # Manual SKU overrides for Macs (real Apple SKUs from screenshot)
 MANUAL_SKU_OVERRIDE = {
+    # M5 Series and MacBook Neo (2025-2026)
+    "Mac Studio (2026, M5 Max)": "Mac17,14",
+    "Mac Studio (2026, M5 Ultra)": "Mac17,15",
+    "Mac mini (2026, M6)": "Mac18,5",
+    "Mac mini (2026, M5 Pro)": "Mac17,16",
+    "MacBook Pro (2026, M5 Pro)": "Mac17,8 Mac17,9",
+    "MacBook Pro (2026, M5 Max)": "Mac17,6 Mac17,7",
+    "MacBook Air (2026, M5)": "Mac17,3 Mac17,4",
+    "MacBook Neo (2026, A18 Pro)": "Mac17,5",
+    "MacBook Pro (2025, M5)": "Mac17,2",
+
     # M4 Series (2024-2025) - Updated to match the image exactly
     "MacBook Air (2024, M4)": "Mac16,12 Mac16,13",
     "MacBook Pro (2024, M4)": "Mac16,1 Mac16,5 Mac16,6 Mac16,7 Mac16,8",
@@ -122,8 +155,8 @@ MANUAL_SKU_OVERRIDE = {
     "Mac Studio (2022, M1)": "Mac13,1 Mac13,2",
     
     # Additional high-end models
-    "Mac Studio (M4 Max)": "Mac16,9 Mac16,10",
-    "Mac Studio (M3 Ultra)": "Mac15,17 Mac15,18"
+    "Mac Studio (M4 Max)": "Mac16,9",
+    "Mac Studio (M3 Ultra)": "Mac15,14"
 }
 
 def get_chip_from_board_config(target: str) -> str:
@@ -155,9 +188,10 @@ def find_xcode_databases() -> List[Tuple[str, str]]:
         databases.append(("Xcode", standard_path))
     
     # Check Xcode beta versions
-    beta_paths = glob.glob("/Applications/Xcode-*.app/Contents/Developer/Platforms/iPhoneOS.platform/usr/standalone/device_traits.db")
-    for path in beta_paths:
-        version = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(path))))))
+    other_paths = glob.glob("/Applications/Xcode-*.app/Contents/Developer/Platforms/iPhoneOS.platform/usr/standalone/device_traits.db")
+    for path in other_paths:
+        app_match = re.search(r"/Applications/([^/]+\.app)/", path)
+        version = app_match.group(1) if app_match else path
         databases.append((version, path))
     
     return sorted(databases, key=lambda x: x[0])
@@ -280,6 +314,11 @@ def get_xcode_version_from_db_path(db_path: str) -> str:
             return f"Unknown (error: {e})"
     return "Unknown"
 
+def xcode_version_key(db_path: str) -> Tuple[int, ...]:
+    """Numeric Xcode version for a device_traits.db path, for picking the newest install."""
+    match = re.search(r"Version (\d+(?:\.\d+)*)", get_xcode_version_from_db_path(db_path))
+    return tuple(int(n) for n in match.group(1).split(".")) if match else (0,)
+
 def generate_device_menu_json(db_path: str = DEFAULT_DB_PATH, ram_map: Dict[str, str] = None, chip_map: Dict[str, str] = None, xcode_version: str = "Xcode") -> Dict[str, Any]:
     """Generate Mac device menu JSON."""
     conn = get_db_connection(db_path)
@@ -397,11 +436,8 @@ def main():
     for i, (version, path) in enumerate(available_dbs, 1):
         print(f"{i}. {version} ({path})")
     
-    # Use the beta version if available, otherwise use the latest
-    selected_version, selected_path = next(
-        ((v, p) for v, p in available_dbs if "Beta" in v or "Developer" in v),
-        available_dbs[-1]
-    )
+    # Use the latest available version
+    selected_version, selected_path = max(available_dbs, key=lambda vp: xcode_version_key(vp[1]))
     print(f"\nUsing {selected_version} database...")
     
     # Fetch Apple Wiki data for Macs

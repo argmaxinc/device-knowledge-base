@@ -1,7 +1,22 @@
 {
-  "date_generated": "2026-03-16T14:31:56.729986",
-  "xcode_version": "Version 26.3 (17C529)",
+  "date_generated": "2026-09-09T18:08:22.343878",
+  "xcode_version": "Version 27.0 (27A266a)",
   "total_menu": {
+    "iPhone Duo": {
+      "sku": "iPhone19,4",
+      "chip": "A20 Pro",
+      "ram": "12 GB"
+    },
+    "iPhone 18 Pro Max": {
+      "sku": "iPhone19,3",
+      "chip": "A20 Pro",
+      "ram": "12 GB"
+    },
+    "iPhone 18 Pro": {
+      "sku": "iPhone19,2",
+      "chip": "A20 Pro",
+      "ram": "12 GB"
+    },
     "iPhone 17e": {
       "sku": "iPhone18,5",
       "chip": "A19",
